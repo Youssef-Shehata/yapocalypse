@@ -1,2 +1,2 @@
-# http-server
-http server in go 
+
+practicing go, dont really know what this project is going to be...
