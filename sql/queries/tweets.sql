@@ -13,3 +13,8 @@ RETURNING *;
 -- name: ResetTweets :exec
 DELETE from  Tweets;
 
+-- name: GetTweets :many
+select * from Tweets where user_id = $1 order by created_at;
+
+-- name: GetTweetById :one
+select * from Tweets where id = $1;

@@ -9,10 +9,10 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/Youssef-Shehata/http-server/internal/auth"
 	"github.com/Youssef-Shehata/http-server/internal/database"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
@@ -20,31 +20,19 @@ import (
 )
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	data, err := json.Marshal(payload)
+	res, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("  ERROR : couldn't parse json\n")
+		log.Printf(fmt.Sprintf("  ERROR : couldn't parse json : %v\n", err))
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	w.WriteHeader(code)
-	w.Write(data)
-}
-func respondWithError(w http.ResponseWriter, code int, msg string) {
-	type error struct {
-		Msg string `json:"msg"`
-	}
-	w.WriteHeader(code)
-	log.Printf("  ERROR : %v \n", msg)
-	if code == 200 {
-		respondWithJSON(w, code, error{Msg: msg})
-	}
-	w.WriteHeader(code)
+	w.Write(res)
 }
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-
 	w.WriteHeader(200)
 	w.Header().Add("Content-Type", "text/plain")
 	fmt.Fprintf(w, "server is all good\n")
-
 }
 
 type apiConfig struct {
@@ -70,9 +58,8 @@ func (cfg *apiConfig) reset(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	cfg.homeHits.Store(0)
 	dbQueries := database.New(cfg.db)
-    dbQueries.ResetUser(cfg.ctx)
-    dbQueries.ResetTweets(cfg.ctx)
-
+	dbQueries.ResetUser(cfg.ctx)
+	dbQueries.ResetTweets(cfg.ctx)
 
 	fmt.Fprintf(w, "hits been reset to : 0")
 
@@ -85,77 +72,200 @@ func (cfg *apiConfig) metrics(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpl, err := template.ParseFiles("./metrics.html")
 	if err != nil {
+		log.Printf("  ERROR: /metrics failed to respond %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = tmpl.Execute(w, page{Hits: cfg.homeHits.Load()})
 	if err != nil {
+		log.Printf("  ERROR: /metrics failed to respond %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
 type Tweet struct {
-	Id         uuid.UUID `json:"id"`
-	Created_at time.Time `json:"created_at"`
-	Updated_at time.Time `json:"updated_at"`
-	User_id    uuid.UUID `json:"user_id"`
-	Body       string    `json:"body"`
+	ID        uuid.UUID `json:"id"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+	Body      string    `json:"body"`
+	UserID    uuid.UUID `json:"user_id"`
 }
 
+func (cfg *apiConfig) getTweetById(w http.ResponseWriter, r *http.Request) {
+	log.Printf("the id in request was : %v \n", r.PathValue("id"))
+	stringId := r.PathValue("id")
+	byteId := []byte(stringId)
+	id, err := uuid.ParseBytes(byteId)
+
+	if err != nil {
+		log.Printf("  ERROR Invalid id: id(%v) \n %v \n", stringId, err.Error())
+		http.Error(w, fmt.Sprintln("Invalid Id :", err.Error()), http.StatusBadRequest)
+		return
+	}
+	db := database.New(cfg.db)
+	tweet, err := db.GetTweetById(cfg.ctx, id)
+	if err != nil {
+		log.Printf("  ERROR tweet not found %v \n%v\n", id, err.Error())
+		http.Error(w, "", http.StatusNotFound)
+		return
+	}
+	respondWithJSON(w, http.StatusOK, Tweet{
+		ID:        tweet.ID,
+		CreatedAt: tweet.CreatedAt,
+		UpdatedAt: tweet.UpdatedAt,
+		Body:      tweet.Body,
+		UserID:    tweet.UserID,
+	})
+}
+func (cfg *apiConfig) getTweets(w http.ResponseWriter, r *http.Request) {
+	type params struct {
+		User_id uuid.UUID `json:"user_id"`
+	}
+	user := params{}
+	j := json.NewDecoder(r.Body)
+
+	err := j.Decode(&user)
+	log.Printf("user requesting his tweets : %v", user)
+	if err != nil {
+		log.Printf("  ERROR parsing json in request api/tweet : %v \n", err)
+		http.Error(w, fmt.Sprintln("failed to parse request", err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	db := database.New(cfg.db)
+
+	tweets, err := db.GetTweets(cfg.ctx, user.User_id)
+	if err != nil {
+		log.Printf("  ERROR couldnt get tweets: %v \n", err)
+		http.Error(w, fmt.Sprintln("failed to get tweets :", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	if len(tweets) == 0 {
+		respondWithJSON(w, http.StatusOK, "user has no tweets")
+		return
+	}
+
+	var resTweets []Tweet
+	for _, tweet := range tweets {
+
+		resTweets = append(resTweets, Tweet{
+			ID:        tweet.ID,
+			CreatedAt: tweet.CreatedAt,
+			UpdatedAt: tweet.UpdatedAt,
+			Body:      tweet.Body,
+			UserID:    tweet.UserID,
+		})
+	}
+	respondWithJSON(w, http.StatusOK, resTweets)
+}
 func (cfg *apiConfig) tweet(w http.ResponseWriter, r *http.Request) {
 	tweet := Tweet{}
 	j := json.NewDecoder(r.Body)
+
 	err := j.Decode(&tweet)
 
 	if err != nil {
-		respondWithError(w, 500, "parsing json in post request : api/validate")
+		log.Printf("  ERROR parsing json in request api/tweet : %v \n", err)
+		http.Error(w, fmt.Sprintln("failed to parse request", err.Error()), http.StatusBadRequest)
 		return
 	}
 
+	log.Printf("tweeting : %+v \n", tweet)
 	if len(tweet.Body) > 140 {
-		respondWithError(w, 200, "cant exceed 140 characters in request body\n")
+		log.Printf("  ERROR request has more than 140 characters \n")
+		http.Error(w, "Tweet cant exceed 140 characters in request body \n", http.StatusBadRequest)
 		return
 	}
 
-	if strings.ContainsAny(strings.ToLower(tweet.Body), "fuck") {
-		tweet.Body = strings.ReplaceAll(tweet.Body, "fuck", "****")
+	db := database.New(cfg.db)
+	t, err := db.CreateTweet(cfg.ctx, database.CreateTweetParams{
+		UserID: tweet.UserID,
+		Body:   tweet.Body,
+	})
+	if err != nil {
+		log.Printf("  ERROR couldnt store tweet in db : %v \n", err)
+		http.Error(w, fmt.Sprintln("failed to store tweet :", err.Error()), http.StatusInternalServerError)
+		return
 	}
-    
-    db:= database.New(cfg.db)
-    t ,err:= db.CreateTweet(cfg.ctx, database.CreateTweetParams{
-    	UserID: uuid.NullUUID{UUID: tweet.User_id,Valid: true},
-    	Body:  tweet.Body, 
-    })
-    if err != nil{
-        respondWithError(w,http.StatusInternalServerError,"couldnt upload tweet")
-        return
-    }
 
 	respondWithJSON(w, 200, t)
 }
-func (c *apiConfig) createUser(w http.ResponseWriter, r *http.Request) {
+func (c *apiConfig) signUp(w http.ResponseWriter, r *http.Request) {
 
 	type params struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	j := json.NewDecoder(r.Body)
 	p := params{}
 	err := j.Decode(&p)
 	if err != nil || p.Email == "" {
-		respondWithError(w, http.StatusBadRequest, "couldnt decode json in request ")
+		log.Printf("  ERROR bad request api/createUser: %v \n", err)
+		http.Error(w, fmt.Sprint("bad request : ", err.Error()), http.StatusBadRequest)
 		return
 	}
 	dbQueries := database.New(c.db)
-	newUser, err := dbQueries.CreateUser(c.ctx, p.Email)
-	sh7tt := User(newUser)
+	hashedPass, err := auth.HashPassword(p.Password)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "couldnt create new user")
+		log.Printf("  ERROR failed to create new user : %v \n", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	user, err := dbQueries.CreateUser(c.ctx, database.CreateUserParams{Email: p.Email, Password: hashedPass})
+	sh7tt := User{
+		ID:        user.ID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email:     user.Email,
+	}
+	if err != nil {
+		log.Printf("  ERROR failed to create new user : %v \n", err)
+		http.Error(w, "couldnt create new user", http.StatusInternalServerError)
 		return
 	}
 
 	respondWithJSON(w, 200, sh7tt)
+}
+func (cfg *apiConfig) logIn(w http.ResponseWriter, r *http.Request) {
+
+	type params struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	j := json.NewDecoder(r.Body)
+	p := params{}
+	err := j.Decode(&p)
+
+	if err != nil || p.Email == "" {
+		log.Printf("  ERROR bad request api/createUser: %v \n", err)
+		http.Error(w, fmt.Sprint("bad request : ", err.Error()), http.StatusBadRequest)
+		return
+	}
+	db := database.New(cfg.db)
+	user, err := db.GetUserByEmail(cfg.ctx, p.Email)
+	if err != nil {
+		log.Printf("  ERROR Wrong email or password \n %v", err)
+		http.Error(w, "Wrong Email or Password", http.StatusUnauthorized)
+		return
+
+	}
+
+	error := auth.CheckHashedPassword(p.Password, user.Password)
+	if error != nil {
+		log.Printf("  ERROR Wrong email or password \n %v", error)
+		http.Error(w, "Wrong Email or Password", http.StatusUnauthorized)
+		return
+	}
+    respondWithJSON(w, http.StatusOK ,User{
+    	ID:        user.ID,
+    	CreatedAt: user.CreatedAt,
+    	UpdatedAt: user.UpdatedAt,
+    	Email:     user.Email,
+    })
 }
 
 type User struct {
@@ -183,8 +293,13 @@ func main() {
 	mux.HandleFunc("GET /admin/health", healthHandler)
 	mux.HandleFunc("GET /admin/metrics", cfg.metrics)
 	mux.HandleFunc("POST /admin/reset", cfg.reset)
-	mux.HandleFunc("POST /api/tweet", cfg.tweet)
-	mux.HandleFunc("POST /api/create_user", cfg.createUser)
+
+	mux.HandleFunc("POST /api/v1/tweets", cfg.tweet)
+	mux.HandleFunc("GET /api/v1/tweets", cfg.getTweets)
+	mux.HandleFunc("GET /api/v1/tweets/{id}", cfg.getTweetById)
+	mux.HandleFunc("POST /api/v1/signup", cfg.signUp)
+	mux.HandleFunc("POST /api/v1/login", cfg.logIn)
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "main page , welcome son \n")
 	})

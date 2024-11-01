@@ -24,7 +24,7 @@ RETURNING id, created_at, updated_at, body, user_id
 `
 
 type CreateTweetParams struct {
-	UserID uuid.NullUUID
+	UserID uuid.UUID
 	Body   string
 }
 
@@ -39,6 +39,56 @@ func (q *Queries) CreateTweet(ctx context.Context, arg CreateTweetParams) (Tweet
 		&i.UserID,
 	)
 	return i, err
+}
+
+const getTweetById = `-- name: GetTweetById :one
+select id, created_at, updated_at, body, user_id from Tweets where id = $1
+`
+
+func (q *Queries) GetTweetById(ctx context.Context, id uuid.UUID) (Tweet, error) {
+	row := q.db.QueryRowContext(ctx, getTweetById, id)
+	var i Tweet
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Body,
+		&i.UserID,
+	)
+	return i, err
+}
+
+const getTweets = `-- name: GetTweets :many
+select id, created_at, updated_at, body, user_id from Tweets where user_id = $1 order by created_at
+`
+
+func (q *Queries) GetTweets(ctx context.Context, userID uuid.UUID) ([]Tweet, error) {
+	rows, err := q.db.QueryContext(ctx, getTweets, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Tweet
+	for rows.Next() {
+		var i Tweet
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Body,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const resetTweets = `-- name: ResetTweets :exec
