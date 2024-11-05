@@ -10,12 +10,10 @@ import (
 	"github.com/google/uuid"
 )
 
-type Tweet struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Body      string
-	UserID    uuid.UUID
+type Follower struct {
+	FollowerID uuid.UUID
+	FolloweeID uuid.UUID
+	CreatedAt  time.Time
 }
 
 type User struct {
@@ -24,4 +22,14 @@ type User struct {
 	UpdatedAt time.Time
 	Email     string
 	Password  string
+	Premuim   bool
+	Username  string
+}
+
+type Yap struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Body      string
+	UserID    uuid.UUID
 }

@@ -5,4 +5,4 @@ ADD COLUMN password Text Not Null ;
 
 -- +goose Down
 ALTER TABLE users 
-DELETE COLUMN password ;
+DROP COLUMN password ;

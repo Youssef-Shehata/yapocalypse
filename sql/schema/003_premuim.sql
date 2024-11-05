@@ -6,4 +6,4 @@ ADD COLUMN premuim bool Not Null DEFAULT false;
 
 -- +goose Down
 ALTER TABLE users 
-DELETE COLUMN premuim;
+DROP COLUMN premuim;

@@ -7,7 +7,7 @@ updated_at TIMESTAMP not null DEFAULT CURRENT_TIMESTAMP,
 email Text unique not null
 );
 
-CREATE TABLE Tweets(
+CREATE TABLE Yaps(
 id UUID PRIMARY KEY,
 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -20,5 +20,5 @@ user_id UUID NOT NULL,
 );
 
 -- +goose Down
-DROP  TABLE Tweets;
+DROP  TABLE Yaps;
 DROP TABLE users;
