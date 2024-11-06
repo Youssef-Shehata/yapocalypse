@@ -20,6 +20,9 @@ func main() {
 	mux.HandleFunc("GET /api/v1/yaps", cfg.getYaps)
 	mux.HandleFunc("GET /api/v1/yaps/{id}", cfg.getYapById)
 
+    //pulling feed as chunks of with limits 
+    mux.HandleFunc("GET /api/v1/feed/{id}", cfg.getFeed)
+
 	mux.HandleFunc("POST /admin/reset", cfg.reset)
 	mux.HandleFunc("POST /api/v1/yaps", cfg.authMiddleware(cfg.CreateYap).ServeHTTP)
 	mux.HandleFunc("POST /api/v1/signup", cfg.signUp)
@@ -28,11 +31,14 @@ func main() {
 
 	mux.HandleFunc("GET /api/v1/followers/{id}", cfg.GetFollowers)
 	mux.HandleFunc("GET /api/v1/followees/{id}", cfg.GetFollowees)
-	mux.HandleFunc("POST /api/v1/followers", cfg.Follow)
+	mux.HandleFunc("POST /api/v1/followers"    , cfg.Follow)
 
-	mux.HandleFunc("PUT /api/v1/users/", cfg.authMiddleware(cfg.premuimMiddleware(cfg.UpdateUser).ServeHTTP).ServeHTTP)
+    mux.HandleFunc("PUT /api/v1/users/", cfg.authMiddleware(cfg.premuimMiddleware(cfg.UpdateUser).ServeHTTP).ServeHTTP)
 
 	mux.HandleFunc("DELETE /api/v1/yaps/{id}", cfg.authMiddleware(cfg.DeleteYap).ServeHTTP)
+
+
+
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "main page , welcome son \n")

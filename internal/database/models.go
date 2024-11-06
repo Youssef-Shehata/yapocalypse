@@ -10,6 +10,11 @@ import (
 	"github.com/google/uuid"
 )
 
+type Feed struct {
+	UserID uuid.UUID
+	YapID  uuid.UUID
+}
+
 type Follower struct {
 	FollowerID uuid.UUID
 	FolloweeID uuid.UUID

@@ -92,9 +92,6 @@ func (cfg *apiConfig) Follow(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-
-
-
 	followee_id, err := uuid.Parse(p.Followee_id)
 	if err != nil {
 		log.Printf("  ERROR: Invalid id: (%v) \n %v \n", followee_id, err.Error())

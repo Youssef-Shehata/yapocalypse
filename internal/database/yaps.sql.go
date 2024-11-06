@@ -109,6 +109,7 @@ func (q *Queries) GetYapsByUserId(ctx context.Context, userID uuid.UUID) ([]Yap,
 }
 
 const newYap = `-- name: NewYap :one
+
 INSERT INTO Yaps(id, created_at, updated_at, user_id ,body )
 
 VALUES (

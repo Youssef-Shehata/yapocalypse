@@ -129,8 +129,13 @@ func (cfg *apiConfig) CreateYap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+    //asynchronously analyze this yap to find the topic to which it belongs 
+
+    //asynchronously send an event to kafka topic of this yap
+
 	respondWithJSON(w, 200, t)
 }
+
 func (cfg *apiConfig) DeleteYap(w http.ResponseWriter, r *http.Request) {
 	userId, ok := r.Context().Value("userid").(uuid.UUID)
 	if !ok {
