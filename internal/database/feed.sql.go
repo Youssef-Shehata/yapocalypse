@@ -11,13 +11,33 @@ import (
 	"github.com/google/uuid"
 )
 
-const getInitialFeed = `-- name: GetInitialFeed :many
-select y.id, y.created_at, y.updated_at, y.body, y.user_id from yaps y join feed f on y.user_id = f.user_id
-where y.user_id = $1 order by y.created_at Desc LIMIT 20
+const addToFeed = `-- name: AddToFeed :exec
+ INSERT INTO feed (user_id , yap_id)
+VALUES($1,$2)
 `
 
-func (q *Queries) GetInitialFeed(ctx context.Context, userID uuid.UUID) ([]Yap, error) {
-	rows, err := q.db.QueryContext(ctx, getInitialFeed, userID)
+type AddToFeedParams struct {
+	UserID uuid.UUID
+	YapID  uuid.UUID
+}
+
+func (q *Queries) AddToFeed(ctx context.Context, arg AddToFeedParams) error {
+	_, err := q.db.ExecContext(ctx, addToFeed, arg.UserID, arg.YapID)
+	return err
+}
+
+const getFeed = `-- name: GetFeed :many
+select y.id, y.created_at, y.updated_at, y.body, y.user_id from yaps y join feed f on y.user_id = f.user_id
+where y.user_id = $1 order by y.created_at Desc offset $2 LIMIT 20
+`
+
+type GetFeedParams struct {
+	UserID uuid.UUID
+	Offset int32
+}
+
+func (q *Queries) GetFeed(ctx context.Context, arg GetFeedParams) ([]Yap, error) {
+	rows, err := q.db.QueryContext(ctx, getFeed, arg.UserID, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

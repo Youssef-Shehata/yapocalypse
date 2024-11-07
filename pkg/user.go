@@ -118,6 +118,7 @@ func (cfg *apiConfig) signUp(w http.ResponseWriter, r *http.Request) {
 	type params struct {
 		Email            string `json:"email"`
 		Password         string `json:"password"`
+		Username         string `json:"username"`
 		ExpiresInSeconds int    `json:"expires_in"`
 	}
 	var p params
@@ -132,16 +133,25 @@ func (cfg *apiConfig) signUp(w http.ResponseWriter, r *http.Request) {
 		return
 
 	}
+	if p.Username== "" {
+		log.Printf("  ERROR bad request to api/createUser: empty username field\n")
+		http.Error(w, "username can't be empty", http.StatusBadRequest)
+		return
+
+	}
+
 
 	hashedPass, err := auth.HashPassword(p.Password)
 	if err != nil {
 		log.Printf("  ERROR failed to create new user : %v \n", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "failure hashing password",http.StatusInternalServerError)
 		return
 	}
 
 	user, err := cfg.query.CreateUser(cfg.ctx, database.CreateUserParams{Email: p.Email, Password: hashedPass})
 
+
+    // HOW TO KNOW USERNAME IS TAKEN WITH THIS VAGE ERROR SHIT 
 	if err != nil {
 		time.Sleep(time.Second)
 		log.Printf("  ERROR failed to create new user : %v \n", err)

@@ -15,11 +15,9 @@ RETURNING *;
 -- name: ResetYaps :exec
 DELETE from  Yaps;
 
--- name: GetYaps :many
-select * from Yaps;
 
 -- name: GetYapsByUserId :many
-select * from Yaps where user_id = $1;
+select * from Yaps where user_id = $1 order by created_at desc ;
 -- name: GetYapById :one
 select * from Yaps where id = $1;
 

@@ -42,41 +42,8 @@ func (q *Queries) GetYapById(ctx context.Context, id uuid.UUID) (Yap, error) {
 	return i, err
 }
 
-const getYaps = `-- name: GetYaps :many
-select id, created_at, updated_at, body, user_id from Yaps
-`
-
-func (q *Queries) GetYaps(ctx context.Context) ([]Yap, error) {
-	rows, err := q.db.QueryContext(ctx, getYaps)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Yap
-	for rows.Next() {
-		var i Yap
-		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Body,
-			&i.UserID,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getYapsByUserId = `-- name: GetYapsByUserId :many
-select id, created_at, updated_at, body, user_id from Yaps where user_id = $1
+select id, created_at, updated_at, body, user_id from Yaps where user_id = $1 order by created_at desc
 `
 
 func (q *Queries) GetYapsByUserId(ctx context.Context, userID uuid.UUID) ([]Yap, error) {

@@ -13,7 +13,7 @@ import (
 func (cfg *apiConfig) GetFollowers(w http.ResponseWriter, r *http.Request) {
 
 	urlQueries := r.URL.Query()
-	id := urlQueries.Get("id")
+	id := urlQueries.Get("user_id")
 
 	var resUsers []User
 
@@ -47,7 +47,7 @@ func (cfg *apiConfig) GetFollowers(w http.ResponseWriter, r *http.Request) {
 func (cfg *apiConfig) GetFollowees(w http.ResponseWriter, r *http.Request) {
 
 	urlQueries := r.URL.Query()
-	id := urlQueries.Get("id")
+	id := urlQueries.Get("user_id")
 
 	var resUsers[]User
 
