@@ -3,21 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Youssef-Shehata/yapocalypse/cmd/types"
 	"github.com/Youssef-Shehata/yapocalypse/internal/database"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"
-	"time"
 )
 
-type Yap struct {
-	ID        uuid.UUID `json:"id"`
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
-	Body      string    `json:"body"`
-	UserID    uuid.UUID `json:"user_id"`
-}
+type Yap = types.Yap
+
 func (cfg *apiConfig) getYapById(w http.ResponseWriter, r *http.Request) {
 	stringId := r.PathValue("yap_id")
 
@@ -79,28 +74,33 @@ func (cfg *apiConfig) CreateYap(w http.ResponseWriter, r *http.Request) {
 
 	userId, ok := r.Context().Value("userid").(uuid.UUID)
 	if !ok {
-		log.Printf("  ERROR: parsing token\n")
-		http.Error(w, "failed to parse token", http.StatusBadRequest)
+		log.Printf("  ERROR: User isnt Authenticated \n")
+		http.Error(w, "Failed to parse token", http.StatusUnauthorized)
 	}
-	yap := params{}
+
+	p := params{}
 	j := json.NewDecoder(r.Body)
 
-	error := j.Decode(&yap)
+	error := j.Decode(&p)
 	if error != nil {
-		log.Printf("  ERROR: parsing json in request api/yaps: %v \n", error)
+		log.Printf("  ERROR: parsing json in request : %v \n", error)
 		http.Error(w, fmt.Sprintln("failed to parse request", error.Error()), http.StatusBadRequest)
 		return
 	}
 
-	if len(yap.Body) > 140 {
-		log.Printf("  ERROR: request has more than 140 characters \n")
-		http.Error(w, "damn boi, chil; Yap cant exceed 140 characters \n", http.StatusBadRequest)
+	if len(p.Body) > 60 {
+		log.Printf("  ERROR: request has more than 60 characters \n")
+		http.Error(w, "damn boi, chill; Yap cant exceed 60 characters \n", http.StatusBadRequest)
 		return
 	}
+    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    //DUAL WRITE PROBLEM OVER HERE 
+    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	t, err := cfg.query.NewYap(cfg.ctx, database.NewYapParams{
+    //DB WRITE
+	db_yap, err := cfg.query.NewYap(cfg.ctx, database.NewYapParams{
 		UserID: userId,
-		Body:   yap.Body,
+		Body:   p.Body,
 	})
 
 	if err != nil {
@@ -109,11 +109,22 @@ func (cfg *apiConfig) CreateYap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-    //asynchronously analyze this yap to find the topic to which it belongs 
+	yap := Yap{
+		ID:        db_yap.ID,
+		UpdatedAt: db_yap.UpdatedAt,
+		CreatedAt: db_yap.CreatedAt,
+		Body:      db_yap.Body,
+		UserID:    db_yap.UserID,
+	}
 
-    //asynchronously send an event to kafka topic of this yap
+    //KAFKA WRITE
+	if err := cfg.producer.SendKafkaMessage(yap); err != nil {
+		log.Printf("  ERROR: couldnt store yap in db : %v \n", err)
+		http.Error(w, fmt.Sprintln("failed to store yap:", err.Error()), http.StatusInternalServerError)
+        return
+	}
 
-	respondWithJSON(w, 200, t)
+	respondWithJSON(w, 200, yap)
 }
 
 func (cfg *apiConfig) DeleteYap(w http.ResponseWriter, r *http.Request) {

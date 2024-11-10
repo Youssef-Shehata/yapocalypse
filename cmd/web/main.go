@@ -11,13 +11,12 @@ import (
 	"log"
 	"net/http"
 )
-
+var PORT = os.Getenv("PORT")
 func main() {
 	cfg, mux := Init()
 
     //TODO: ADD AUTH MIDDLWARE
 	mux.HandleFunc("GET /admin/health", healthHandler)
-	mux.HandleFunc("GET /admin/metrics", cfg.metrics)
 
 	mux.HandleFunc("GET /api/v1/yaps/user/{user_id}", cfg.getYaps)
 	mux.HandleFunc("GET /api/v1/yaps/{yap_id}", cfg.getYapById)
@@ -25,11 +24,11 @@ func main() {
 	//pulling feed as chunks of with limits
 	mux.HandleFunc("GET /api/v1/feed", cfg.getFeed)
 
-	mux.HandleFunc("POST /admin/reset", cfg.reset)
 	mux.HandleFunc("POST /api/v1/yaps", cfg.authMiddleware(cfg.CreateYap).ServeHTTP)
 	mux.HandleFunc("POST /api/v1/signup", cfg.signUp)
 	mux.HandleFunc("POST /api/v1/login", cfg.logIn)
 
+    //trying out webhooks 
 	mux.HandleFunc("POST /api/v1/premuim/webhook", cfg.SubscribeToPremuim)
 
 	mux.HandleFunc("GET /api/v1/followers/{user_id}", cfg.GetFollowers)
@@ -44,7 +43,7 @@ func main() {
 		fmt.Fprintf(w, "main page , welcome son \n")
 	})
 
-	server := http.Server{Handler: mux, WriteTimeout: 10 * time.Second, ReadTimeout: 10 * time.Second, Addr: "localhost:"+ os.Getenv("PORT")}
+	server := http.Server{Handler: mux, WriteTimeout: 10 * time.Second, ReadTimeout: 10 * time.Second, Addr: "localhost:"+ PORT}
 	err := server.ListenAndServe()
 
 	if err != nil {

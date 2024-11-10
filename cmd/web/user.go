@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Youssef-Shehata/yapocalypse/internal/auth"
+	"github.com/Youssef-Shehata/yapocalypse/cmd/types"
 	"github.com/Youssef-Shehata/yapocalypse/internal/database"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -12,15 +13,8 @@ import (
 	"time"
 )
 
-type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-	Token     string    `json:"token"`
-	Username  string    `json:"username"`
-	Premuim   bool      `json:"premuim"`
-}
+type User = types.User
+
 
 func (cfg *apiConfig) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	type params struct {
