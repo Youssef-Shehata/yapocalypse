@@ -3,18 +3,21 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"time"
 
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-
-	"log"
-	"net/http"
 )
-var PORT = os.Getenv("PORT")
 func main() {
-	cfg, mux := Init()
+    
+	godotenv.Load()
+    PORT := os.Getenv("PORT")
 
+
+	cfg, mux := Init()
     //TODO: ADD AUTH MIDDLWARE
 	mux.HandleFunc("GET /admin/health", healthHandler)
 
@@ -39,17 +42,17 @@ func main() {
 
 	mux.HandleFunc("DELETE /api/v1/yaps/{id}", cfg.authMiddleware(cfg.DeleteYap).ServeHTTP)
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "main page , welcome son \n")
 	})
 
-	server := http.Server{Handler: mux, WriteTimeout: 10 * time.Second, ReadTimeout: 10 * time.Second, Addr: "localhost:"+ PORT}
+	server := http.Server{Handler: mux, WriteTimeout: 10 * time.Second, ReadTimeout: 10 * time.Second, Addr:fmt.Sprintf("localhost:%v", PORT)}
+    log.Printf("server listenning %v",server.Addr)
 	err := server.ListenAndServe()
 
 	if err != nil {
 		log.Print("  ERROR: starting server:", err)
 	}
-	log.Printf("server listenning ")
 
 }
 

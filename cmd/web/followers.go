@@ -3,11 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/Youssef-Shehata/yapocalypse/internal/database"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 )
 
 func (cfg *apiConfig) GetFollowers(w http.ResponseWriter, r *http.Request) {
@@ -18,14 +18,15 @@ func (cfg *apiConfig) GetFollowers(w http.ResponseWriter, r *http.Request) {
 	var resUsers []User
 
 	userId, err := uuid.Parse(id)
+
 	if err != nil {
-		log.Printf("  ERROR: Invalid id: (%v) \n %v \n", userId, err.Error())
+        cfg.logger.Log(ERROR , errors.Wrap(err , "Invalid Id"))
 		http.Error(w, fmt.Sprintln("Invalid Id :", err.Error()), http.StatusBadRequest)
 	}
 
 	users, err := cfg.query.GetFollowersOf(cfg.ctx, userId)
 	if err != nil {
-		log.Printf("  ERROR couldnt get yaps: %v \n", err)
+        cfg.logger.Log(ERROR , errors.Wrap(err , "Fetching Yaps"))
 		http.Error(w, fmt.Sprintln("failed to get yaps:", err.Error()), http.StatusInternalServerError)
 		return
 	}
@@ -53,13 +54,13 @@ func (cfg *apiConfig) GetFollowees(w http.ResponseWriter, r *http.Request) {
 
 	userId, err := uuid.Parse(id)
 	if err != nil {
-		log.Printf("  ERROR: Invalid id: (%v) \n %v \n", userId, err.Error())
+        cfg.logger.Log(ERROR , errors.Wrap(err , "Invalid Id"))
 		http.Error(w, fmt.Sprintln("Invalid Id :", err.Error()), http.StatusBadRequest)
 	}
 
 	users, err := cfg.query.GetFolloweesOf(cfg.ctx, userId)
 	if err != nil {
-		log.Printf("  ERROR couldnt get yaps: %v \n", err)
+        cfg.logger.Log(ERROR , errors.Wrap(err , "Fetching Yaps"))
 		http.Error(w, fmt.Sprintln("failed to get yaps:", err.Error()), http.StatusInternalServerError)
 		return
 	}
@@ -87,21 +88,21 @@ func (cfg *apiConfig) Follow(w http.ResponseWriter, r *http.Request) {
 
     var p params
     if err:= json.NewDecoder(r.Body).Decode(&p); err!=nil{
-		log.Printf("  ERROR couldnt parse json %v \n", err)
+        cfg.logger.Log(ERROR , errors.Wrap(err , "Parsing Json"))
 		http.Error(w, fmt.Sprintln("failed to parse json :", err.Error()), http.StatusInternalServerError)
         return
     }
 
 	followee_id, err := uuid.Parse(p.Followee_id)
 	if err != nil {
-		log.Printf("  ERROR: Invalid id: (%v) \n %v \n", followee_id, err.Error())
+        cfg.logger.Log(ERROR , errors.Wrap(err , "Invalid Id"))
 		http.Error(w, fmt.Sprintln("Invalid Id :", err.Error()), http.StatusBadRequest)
         return
 	}
 
 	followerId, err := uuid.Parse(p.Follower_id)
 	if err != nil {
-		log.Printf("  ERROR: Invalid id: (%v) \n %v \n", followerId, err.Error())
+        cfg.logger.Log(ERROR , errors.Wrap(err , "Invalid Id"))
 		http.Error(w, fmt.Sprintln("Invalid Id :", err.Error()), http.StatusBadRequest)
         return
 	}
@@ -110,7 +111,7 @@ func (cfg *apiConfig) Follow(w http.ResponseWriter, r *http.Request) {
     	FollowerID: followerId,
     	FolloweeID: followee_id,
     }); err != nil {
-		log.Printf("  ERROR couldn't follow %v : %v \n",followee_id, err)
+        cfg.logger.Log(ERROR , errors.Wrap(err , "Failed to Follow"))
 		http.Error(w, fmt.Sprintln("failed to follow :",followee_id, err.Error()), http.StatusInternalServerError)
         return
     }

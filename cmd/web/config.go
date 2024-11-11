@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sync/atomic"
 
 	"github.com/Youssef-Shehata/yapocalypse/internal/database"
+	"github.com/Youssef-Shehata/yapocalypse/pkg/logger"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
@@ -23,13 +23,12 @@ var (
 
 type apiConfig struct {
 	platform string
-	homeHits atomic.Int32
-	db       *sql.DB
 	rdb      *redis.Client
 	query    *database.Queries
 	ctx      context.Context
 	secret   string
 	api_key  string
+    logger   *logger.Logger
 }
 
 func Init() (*apiConfig, *http.ServeMux) {
@@ -43,8 +42,13 @@ func Init() (*apiConfig, *http.ServeMux) {
 	}
     query := database.New(db)
 
+    logger ,err:= logger.NewLogger("./server.log")
+    if err != nil{
+        log.Printf("couldnt open/create log file %v" , err)
+    }
 
 	rdb := newRedisClient()
-	cfg := &apiConfig{ctx: ctx, platform: PLATFORM, homeHits: atomic.Int32{}, db: db, secret: SECRET, query: query, api_key: PREMUIM_API_KEY, rdb: rdb  }
+	cfg := &apiConfig{ctx: ctx, platform: PLATFORM,  secret: SECRET, query: query, api_key: PREMUIM_API_KEY, rdb: rdb, logger: logger}
 	return cfg, mux
+
 }

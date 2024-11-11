@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Youssef-Shehata/yapocalypse/cmd/types"
+	"github.com/Youssef-Shehata/yapocalypse/pkg/types"
 	"github.com/Youssef-Shehata/yapocalypse/internal/database"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"

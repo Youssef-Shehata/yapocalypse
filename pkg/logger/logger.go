@@ -16,11 +16,12 @@ type logLevel string
 const (
 	ERROR logLevel = "ERROR"
 	INFO  logLevel = "INFO"
+	FATAL logLevel = "FATAL"
 )
 
 func validateLogLevel(level logLevel) bool {
 	switch level {
-	case ERROR, INFO:
+	case ERROR, INFO,FATAL:
 		return true
 	default:
 		return false
@@ -44,14 +45,22 @@ func (l *Logger) Log(lvl logLevel , err error ) {
 			log.Fatalf("Invalid log level: %s", lvl)
 		}
 	}
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	msg := fmt.Sprintf(" [%s] %v : %v\n", timestamp, lvl, err)
+
+    timestamp := time.Now().Format("2006-01-02 15:04:05")
+    msg := fmt.Sprintf(" [%s] %v : %v\n", timestamp, lvl, err)
+
+    if _, writeErr := l.file.WriteString(msg); writeErr != nil {
+        log.Printf("Failed to write to log file: %v\n", writeErr)
+    }
+
+
+    if lvl == FATAL{
+        log.Fatal(msg)
+        return
+    }
+
 
 	fmt.Println(msg)
-
-	if _, writeErr := l.file.WriteString(msg); writeErr != nil {
-		log.Printf("Failed to write to log file: %v\n", writeErr)
-	}
 }
 
 func (l *Logger) Close() error {

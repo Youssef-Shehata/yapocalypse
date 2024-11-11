@@ -2,11 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"log"
+	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -25,11 +26,11 @@ func cacheSet(cfg *apiConfig, key string, yaps []Yap) {
 
 	jsonYaps, err := json.Marshal(yaps)
 	if err != nil {
-		log.Printf("  ERROR : failed to marshal json %v", err)
+        cfg.logger.Log(ERROR , errors.Wrap(err , "Marshaling Json"))
 		return
 	}
 	if err := cfg.rdb.Set(cfg.ctx, key, jsonYaps, 10*time.Hour).Err(); err != nil {
-		log.Printf("  ERROR : failed to set to redis : %v", err)
+        cfg.logger.Log(ERROR , errors.Wrap(err , "Setting to Redis"))
 		return
 	}
 
@@ -39,20 +40,19 @@ func cacheGet(cfg *apiConfig, key string) ([]Yap, error) {
 
 	cachedTweet, err := cfg.rdb.Get(cfg.ctx, key).Result()
 	if err == redis.Nil {
-		log.Printf("cach miss for %v",key)
+        cfg.logger.Log(INFO, fmt.Errorf( "Redis Cache Miss"))
         return nil , err
 	} else if err != nil {
-		log.Printf("  ERROR request from redis : %v", err)
+        cfg.logger.Log(ERROR , errors.Wrap(err , "Redis Read"))
         return nil , err
 	}
 
 	var yaps []Yap
 
 	if err := json.NewDecoder(strings.NewReader(cachedTweet)).Decode(&yaps); err != nil {
-		log.Printf("  ERROR : failed to parse json in redis response %v", err)
+        cfg.logger.Log(ERROR , errors.Wrap(err , "Redis Response"))
 		return nil, err
 	}
 
-    log.Println("returning yaps from cache ")
 	return yaps, nil
 }

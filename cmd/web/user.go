@@ -3,18 +3,18 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Youssef-Shehata/yapocalypse/internal/auth"
-	"github.com/Youssef-Shehata/yapocalypse/cmd/types"
-	"github.com/Youssef-Shehata/yapocalypse/internal/database"
-	"github.com/google/uuid"
-	_ "github.com/lib/pq"
-	"log"
 	"net/http"
 	"time"
+
+	"github.com/Youssef-Shehata/yapocalypse/internal/auth"
+	"github.com/Youssef-Shehata/yapocalypse/internal/database"
+	"github.com/Youssef-Shehata/yapocalypse/pkg/types"
+	"github.com/google/uuid"
+	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
 )
 
 type User = types.User
-
 
 func (cfg *apiConfig) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	type params struct {
@@ -23,21 +23,21 @@ func (cfg *apiConfig) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	userId, ok := r.Context().Value("userid").(uuid.UUID)
 	if !ok {
-		log.Println("  ERROR: parsing context token")
+		cfg.logger.Log(ERROR, fmt.Errorf("Parsing Token"))
 		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
 
 	var p params
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		log.Printf("  ERROR: parsing json in request :%v", err)
+		cfg.logger.Log(ERROR, errors.Wrap(err, "Parsing json"))
 		http.Error(w, "failed to parse json", http.StatusBadRequest)
 		return
 	}
 
 	password, err := auth.HashPassword(p.Password)
 	if err != nil {
-		log.Printf("  ERROR: hashing password :%v", err.Error())
+		cfg.logger.Log(ERROR, errors.Wrap(err, "Hashing Password"))
 		http.Error(w, fmt.Sprintf("couldnt hash password %v", err.Error()), http.StatusBadRequest)
 		return
 	}
@@ -49,7 +49,7 @@ func (cfg *apiConfig) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		log.Printf("  ERROR: updating user :%v", err.Error())
+		cfg.logger.Log(ERROR, errors.Wrap(err, "Updating User"))
 		http.Error(w, fmt.Sprintf("couldnt update user %v", err.Error()), http.StatusBadRequest)
 		return
 	}
@@ -81,25 +81,25 @@ func (cfg *apiConfig) SubscribeToPremuim(w http.ResponseWriter, r *http.Request)
 
 	var p params
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		log.Printf("  ERROR: couldnt parse request %v \n", err.Error())
+		cfg.logger.Log(ERROR, errors.Wrap(err, "Parsing Json"))
 		http.Error(w, "failed parse json :", http.StatusBadRequest)
 	}
 
 	if p.Event != "user.upgraded" {
-		log.Printf("  ERROR: premuim webhook recieved wrong event\n")
+		cfg.logger.Log(ERROR, fmt.Errorf("Wrong event"))
 		http.Error(w, "", http.StatusNoContent)
 		return
 	}
 	id, err := uuid.Parse(p.Data.User_id)
 
 	if err != nil {
-		log.Printf("  ERROR: couldnt parse id %v \n", err.Error())
+		cfg.logger.Log(ERROR, errors.Wrap(err, "Invalid Id"))
 		http.Error(w, "failed parse id :", http.StatusBadRequest)
 		return
 	}
 
 	if error := cfg.query.SubscribeToPremuim(cfg.ctx, id); error != nil {
-		log.Printf("  ERROR: couldnt subscribe %v \n", error.Error())
+		cfg.logger.Log(ERROR, errors.Wrap(err, "failed to subscribe"))
 		http.Error(w, "", http.StatusNotFound)
 		return
 	}
@@ -117,45 +117,43 @@ func (cfg *apiConfig) signUp(w http.ResponseWriter, r *http.Request) {
 	}
 	var p params
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		log.Printf("  ERROR bad request api/createUser: %v \n", err)
+		cfg.logger.Log(ERROR, errors.Wrap(err, "Parsing Json"))
 		http.Error(w, fmt.Sprint("bad request : ", err.Error()), http.StatusBadRequest)
 		return
 	}
 	if p.Email == "" {
-		log.Printf("  ERROR bad request to api/createUser: empty email field\n")
+		cfg.logger.Log(ERROR, fmt.Errorf( "Empty Email"))
 		http.Error(w, "email can't be empty", http.StatusBadRequest)
 		return
 
 	}
-	if p.Username== "" {
-		log.Printf("  ERROR bad request to api/createUser: empty username field\n")
+	if p.Username == "" {
+		cfg.logger.Log(ERROR, fmt.Errorf( "Empty Username"))
 		http.Error(w, "username can't be empty", http.StatusBadRequest)
 		return
 
 	}
 
-
 	hashedPass, err := auth.HashPassword(p.Password)
 	if err != nil {
-		log.Printf("  ERROR failed to create new user : %v \n", err.Error())
-		http.Error(w, "failure hashing password",http.StatusInternalServerError)
+		cfg.logger.Log(ERROR, errors.Wrap(err, "Hashing Password"))
+		http.Error(w, "failure hashing password", http.StatusInternalServerError)
 		return
 	}
 
 	user, err := cfg.query.CreateUser(cfg.ctx, database.CreateUserParams{Email: p.Email, Password: hashedPass})
 
-
-    // HOW TO KNOW USERNAME IS TAKEN WITH THIS VAGE ERROR SHIT 
+	// HOW TO KNOW USERNAME IS TAKEN WITH THIS VAGE ERROR SHIT
 	if err != nil {
 		time.Sleep(time.Second)
-		log.Printf("  ERROR failed to create new user : %v \n", err)
+		cfg.logger.Log(ERROR, errors.Wrap(err, "Creating User"))
 		http.Error(w, "couldnt create new user", http.StatusInternalServerError)
 		return
 	}
 
 	token, err := auth.MakeJWT(user.ID, cfg.secret, p.ExpiresInSeconds)
 	if err != nil {
-		log.Printf("  ERROR making token : %v", err.Error())
+		cfg.logger.Log(ERROR, errors.Wrap(err, "Creating Token"))
 		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
@@ -179,32 +177,32 @@ func (cfg *apiConfig) logIn(w http.ResponseWriter, r *http.Request) {
 
 	var p params
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		log.Printf("  ERROR bad request api/createUser: %v \n", err)
+		cfg.logger.Log(ERROR, errors.Wrap(err, "Parsing Json"))
 		http.Error(w, fmt.Sprint("bad request : ", err.Error()), http.StatusBadRequest)
 		return
 	}
 
 	if p.Email == "" {
-		log.Printf("  ERROR bad request to api/createUser: empty email field\n")
+		cfg.logger.Log(ERROR, fmt.Errorf( "Empty Email"))
 		http.Error(w, "email can't be empty", http.StatusBadRequest)
 		return
 	}
 	user, err := cfg.query.GetUserByEmail(cfg.ctx, p.Email)
 	if err != nil {
-		log.Printf("  ERROR Wrong email or password \n %v", err)
+		cfg.logger.Log(ERROR, fmt.Errorf( "Wrong Email Or Password"))
 		http.Error(w, "Wrong Email or Password", http.StatusUnauthorized)
 		return
 	}
 
 	if error := auth.CheckHashedPassword(p.Password, user.Password); err != nil {
-		log.Printf("  ERROR Wrong email or password \n %v", error)
+		cfg.logger.Log(ERROR, errors.Wrap(error, "Wrong Email Or Password"))
 		http.Error(w, "Wrong Email or Password", http.StatusUnauthorized)
 		return
 	}
 
 	token, err := auth.MakeJWT(user.ID, cfg.secret, p.ExpiresInSeconds)
 	if err != nil {
-		log.Printf("  ERROR making token : %v", err.Error())
+		cfg.logger.Log(ERROR, errors.Wrap(err, "Creating Token"))
 		http.Error(w, "", http.StatusInternalServerError)
 		return
 

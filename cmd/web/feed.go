@@ -1,12 +1,19 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/Youssef-Shehata/yapocalypse/internal/database"
+	"github.com/Youssef-Shehata/yapocalypse/pkg/logger"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
+)
+
+const (
+	ERROR = logger.ERROR
+	INFO  = logger.INFO
 )
 
 type FeedParams struct {
@@ -15,21 +22,17 @@ type FeedParams struct {
 }
 
 func newFeedParams(numberQuery string, userIdQuery string) (FeedParams, error) {
-	log.Printf("pageNum : %v , userId : %v ", numberQuery, userIdQuery)
 	pageNumber, err := strconv.Atoi(numberQuery)
 	if err != nil {
-		log.Printf("  ERROR : failed to parse the provided page number : %v", err)
 		pageNumber = 0
 	}
 
 	userId, err := uuid.Parse(userIdQuery)
 	if err != nil {
-		log.Printf("  ERROR : failed to parse the provided id : %v", err)
 		return FeedParams{}, err
 	}
 
 	return FeedParams{PageNumber: pageNumber, UserId: userId}, nil
-
 }
 
 func (f FeedParams) GetCacheKey() string {
@@ -46,6 +49,7 @@ func (cfg *apiConfig) getFeed(w http.ResponseWriter, r *http.Request) {
 
 	feedParams, err := newFeedParams(r.URL.Query().Get("page_number"), r.URL.Query().Get("user_id"))
 	if err != nil {
+		cfg.logger.Log(ERROR, fmt.Errorf("parsing user_id"))
 		http.Error(w, "failed to parse user id", http.StatusBadRequest)
 		return
 	}
@@ -55,21 +59,21 @@ func (cfg *apiConfig) getFeed(w http.ResponseWriter, r *http.Request) {
 	//CACHE HIT
 	cachedYaps, error := cacheGet(cfg, key)
 	if error == nil {
-		log.Println("cache hit")
+		cfg.logger.Log(INFO, fmt.Errorf("Cache Hit"))
 		respondWithJSON(w, http.StatusOK, cachedYaps)
-        return
+		return
 	}
 
 	//CACHE MISS
 	//request from db
-    log.Println("requesting yaps from db")
+	cfg.logger.Log(ERROR, errors.Wrap(err, "Requesting yaps from db"))
 	yaps, err := cfg.query.GetFeed(cfg.ctx, database.GetFeedParams{
 		UserID: feedParams.UserId,
 		Offset: int32(feedParams.PageNumber) * 20,
 	})
 
 	if err != nil {
-		log.Printf("  ERROR : failed to fetch user feed : %v", err)
+		cfg.logger.Log(ERROR, errors.Wrap(err, "Fetching user feed"))
 		http.Error(w, "Failed to fetch feed of user( %v ) : ", http.StatusInternalServerError)
 		return
 	}
@@ -88,6 +92,6 @@ func (cfg *apiConfig) getFeed(w http.ResponseWriter, r *http.Request) {
 	if len(resYaps) != 0 {
 		cacheSet(cfg, key, resYaps)
 	}
-    log.Println("responding with yaps from db")
+	cfg.logger.Log(INFO, fmt.Errorf("responding with yaps from db"))
 	respondWithJSON(w, http.StatusOK, resYaps)
 }
