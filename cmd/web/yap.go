@@ -118,11 +118,6 @@ func (cfg *apiConfig) CreateYap(w http.ResponseWriter, r *http.Request) {
 	}
 
     //KAFKA WRITE
-	if err := cfg.producer.SendKafkaMessage(yap); err != nil {
-		log.Printf("  ERROR: couldnt store yap in db : %v \n", err)
-		http.Error(w, fmt.Sprintln("failed to store yap:", err.Error()), http.StatusInternalServerError)
-        return
-	}
 
 	respondWithJSON(w, 200, yap)
 }

@@ -8,8 +8,6 @@ import (
 	"os"
 	"sync/atomic"
 
-	"github.com/IBM/sarama"
-	"github.com/Youssef-Shehata/yapocalypse/cmd/producer"
 	"github.com/Youssef-Shehata/yapocalypse/internal/database"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -32,7 +30,6 @@ type apiConfig struct {
 	ctx      context.Context
 	secret   string
 	api_key  string
-    producer *producer.Producer
 }
 
 func Init() (*apiConfig, *http.ServeMux) {
@@ -46,13 +43,8 @@ func Init() (*apiConfig, *http.ServeMux) {
 	}
     query := database.New(db)
 
-	producer, err := producer.SetupProducer()
-	if err != nil {
-		log.Fatalf("failed to initialize producer: %v", err)
-	}
-    defer producer.Sync_producer.Close()
 
 	rdb := newRedisClient()
-	cfg := &apiConfig{ctx: ctx, platform: PLATFORM, homeHits: atomic.Int32{}, db: db, secret: SECRET, query: query, api_key: PREMUIM_API_KEY, rdb: rdb , producer: *producer}
+	cfg := &apiConfig{ctx: ctx, platform: PLATFORM, homeHits: atomic.Int32{}, db: db, secret: SECRET, query: query, api_key: PREMUIM_API_KEY, rdb: rdb  }
 	return cfg, mux
 }
