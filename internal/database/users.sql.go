@@ -121,7 +121,7 @@ func (q *Queries) SubscribeToPremuim(ctx context.Context, id uuid.UUID) error {
 }
 
 const updateUser = `-- name: UpdateUser :one
-UPDATE users set email =$1 ,password = $2 WHERE id = $3 returning id, created_at, updated_at, email, password, premuim, username
+UPDATE users set email =$1 ,password = $2 , updated_at = now() WHERE id = $3 returning id, created_at, updated_at, email, password, premuim, username
 `
 
 type UpdateUserParams struct {

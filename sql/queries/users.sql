@@ -24,7 +24,7 @@ SELECT * from users where username= $1;
 SELECT * from users where email= $1;
 
 -- name: UpdateUser :one
-UPDATE users set email =$1 ,password = $2 WHERE id = $3 returning *;
+UPDATE users set email =$1 ,password = $2 , updated_at = now() WHERE id = $3 returning *;
 
 
 -- name: SubscribeToPremuim :exec 

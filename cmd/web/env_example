@@ -1,0 +1,8 @@
+//example for env file of cmd/web/
+PORT="8080"
+REDIS_URL="localhost:6379"
+DB_URL="postgres db url"
+SECRET="{gojo is coming back}"
+PLATFORM="dev"
+PREMUIM_API_KEY="{key}"
+
