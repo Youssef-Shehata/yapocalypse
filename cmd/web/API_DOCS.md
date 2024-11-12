@@ -12,22 +12,27 @@
 
 #### User Registration
 
-- **URL**: `/register`
+- **URL**: `/signup`
 - **Method**: `POST`
 - **Request Body**:
   ```json
   {
-    "username": "string",
-    "password": "string"
+    "username":    "string",
+    "email":       "string",
+    "password":    "string",   
+    "expirtes_in": "number"   optional  
   }
-
 - **Response**:
-  ```json
+  ```json User
   {
-    "message": "User registered successfully",
-    "token": "jwt_token"
+		"ID":        "uuid",
+		"CreatedAt": "datetime",
+		"UpdatedAt": "datetime",
+		"Email":     "string",
+		"Username":  "string",
+		"Premuim":   "bool",
+		"Token":     "JWT token",
   }
-
 #### User login
 
 - **URL**: `/login`
@@ -35,18 +40,21 @@
 - **Request Body**:
   ```json
   {
-    "username": "string",
-    "password": "string"
+    "email":       "string",
+    "password":    "string"
+    "expirtes_in": "number"   optional  
   }
 - **Response**:
 
   ```json
   {
-    "message": "Login successful",
-    "token": "jwt_token"
+    "ID":        "uuid",
+		"CreatedAt": "datetime",
+		"UpdatedAt": "datetime",
+		"Email":     "string",
+		"Token":     "JWT token",
   }
-
-#### Create a Yap
+#### Yap Creation
 
 
 - **URL**: `/yap`
@@ -54,50 +62,83 @@
 - **Request Body**:
 - **Headers**: ***Authorization***: Bearer <token> 
 
+- **Request Body**:
+  ```json
+  {
+    "body":       "string",
+  }
 - **Response**:
   ```json
   {
-    "message": "Yap created successfully",
-    "yap_id": "uuid"
+    "ID":        "uuid",
+		"UpdatedAt": "datetime",
+		"CreatedAt": "datetime",
+		"Body":      "string",
+		"UserID":    "uuid",
   }
+#### Getting Yaps
 
+- **URL**: `/yaps/user/{user_id}`
+- **Method**: `GET`
+
+- **Response**:
+  ```json
+  [
+    {
+    "ID":        "uuid",
+		"UpdatedAt": "datetime",
+		"CreatedAt": "datetime",
+		"Body":      "string",
+		"UserID":    "uuid",
+    }
+  ]
+
+- **URL**: `/yaps/{yap_id}`
+- **Method**: `GET`
+
+- **Response**:
+  ```json
+    {
+    "ID":        "uuid",
+		"UpdatedAt": "datetime",
+		"CreatedAt": "datetime",
+		"Body":      "string",
+		"UserID":    "uuid",
+    }
 #### Get a User's Feed
 
--**URL**: `/feed/?userId={user_id}&page={page_number}`
--**Method**: `GET`
--**Headers**: ***Authorization***: Bearer <token>
+- **URL**: `/feed/?userId={user_id}&page={page_number}`
+- **Method**: `GET`
+- **Headers**: ***Authorization***: Bearer <token>
 
--**Response**:
-```json
-[
-  {
-    "yap_id": "uuid",
-    "content": "string",
-    "username": "string",
-    "timestamp": "datetime"
-  },
-  {
-    "yap_id": "uuid",
-    "content": "string",
-    "username": "string",
-    "timestamp": "datetime"
-  }
-]
+- **Response**:
+  ```json
+  [
+    {
+      "yap_id": "uuid",
+      "content": "string",
+      "username": "string",
+      "timestamp": "datetime"
+    },
+    {
+      "yap_id": "uuid",
+      "content": "string",
+      "username": "string",
+      "timestamp": "datetime"
+    }
+  ]
+#### Get a User's Followers
+- **URL**: `/followers/{user_id}`
+- **Method**: `GET`
 
-
-Follow a User
-
-URL: /follow/{username}
-
-Method: POST
-
-Headers: Authorization: Bearer <token>
-
-Response:
-
-json
-Copy
-{
-  "message": "You are now following {username}"
-}
-
+- **Response**:
+  ```json
+  [
+    {
+    "ID":        "uuid",
+		"CreatedAt": "datetime",
+		"UpdatedAt": "datetime",
+		"Email":     "string",
+		"Token":     "JWT token",
+    }
+  ]
