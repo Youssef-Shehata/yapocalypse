@@ -71,7 +71,9 @@ if you encounter any issues or have any suggestions, please feel free to open an
 
 - **Yaps** : `id` , `user_id` , `content` , `created_at` , `updated_at`
 
-- **Followers** : `follower_id` , `following_id` , `created_at` , `updated_at`
+- **Followers** : `follower_id` , `following_id` , `created_at` 
+
+- **Feed** : `user_id` , `yap_id` 
 
 - **Indexes**:  
   index on `Followers(followee_id) `
@@ -83,3 +85,7 @@ if you encounter any issues or have any suggestions, please feel free to open an
 - **Password Hashing**: BCrypt
 
 - **JWT**: JSON Web Tokens
+
+## Logging  
+- Created a unified logger package in `/pkg` which is shared between services for consistency, and every service has its own log file for info and errors.
+
