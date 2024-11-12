@@ -8,7 +8,6 @@ import (
 	"github.com/Youssef-Shehata/yapocalypse/internal/auth"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
-	"github.com/pkg/errors"
 )
 
 func (cfg *apiConfig) premuimMiddleware(next http.HandlerFunc) http.Handler {
@@ -23,7 +22,7 @@ func (cfg *apiConfig) premuimMiddleware(next http.HandlerFunc) http.Handler {
 		user, err := cfg.query.GetUserById(cfg.ctx, userId)
 
 		if err != nil {
-			cfg.logger.Log(ERROR, errors.Wrap(err, "Fetching User"))
+			cfg.logger.Log(ERROR, fmt.Errorf("Fetching User",err))
 			http.Error(w, "", http.StatusNotFound)
 			return
 		}
@@ -45,7 +44,7 @@ func (cfg *apiConfig) authMiddleware(next http.HandlerFunc) http.Handler {
 
 		userId, err := auth.ValidateJWT(token, cfg.secret)
 		if err != nil {
-			cfg.logger.Log(ERROR, errors.Wrap(err, "Invalid Token"))
+			cfg.logger.Log(ERROR, fmt.Errorf("Invalid Token",err))
 			http.Error(w, "", http.StatusUnauthorized)
 			return
 		}

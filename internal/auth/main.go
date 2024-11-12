@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	"github.com/pkg/errors"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
@@ -14,14 +13,14 @@ import (
 
 func HashPassword(pass string) (string, error) {
 	if len([]byte(pass)) > 20 {
-		return "", errors.New("password cant exceed 20 bytes")
+		return "", fmt.Errorf("password cant bytes")
 	}
 	if len([]byte(pass)) < 6{
-		return "", errors.New("password cant be less than 6 bytes")
+		return "", fmt.Errorf("password cant bthan 6 bytes")
 	}
 	byteHash, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
 	if err != nil {
-		return "", errors.Wrap(err , "hashing password")
+		return "", fmt.Errorf("hashing password",err)
 	}
 	return string(byteHash), nil
 }

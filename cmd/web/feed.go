@@ -8,7 +8,6 @@ import (
 	"github.com/Youssef-Shehata/yapocalypse/internal/database"
 	"github.com/Youssef-Shehata/yapocalypse/pkg/logger"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -66,14 +65,14 @@ func (cfg *apiConfig) getFeed(w http.ResponseWriter, r *http.Request) {
 
 	//CACHE MISS
 	//request from db
-	cfg.logger.Log(ERROR, errors.Wrap(err, "Requesting yaps from db"))
+	cfg.logger.Log(ERROR, fmt.Errorf( "Requesting yaps from db",err))
 	yaps, err := cfg.query.GetFeed(cfg.ctx, database.GetFeedParams{
 		UserID: feedParams.UserId,
 		Offset: int32(feedParams.PageNumber) * 20,
 	})
 
 	if err != nil {
-		cfg.logger.Log(ERROR, errors.Wrap(err, "Fetching user feed"))
+		cfg.logger.Log(ERROR, fmt.Errorf("Fetching user feed",err))
 		http.Error(w, "Failed to fetch feed of user( %v ) : ", http.StatusInternalServerError)
 		return
 	}

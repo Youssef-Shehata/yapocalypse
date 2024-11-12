@@ -10,7 +10,6 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/Youssef-Shehata/yapocalypse/pkg/logger"
 	"github.com/Youssef-Shehata/yapocalypse/pkg/types"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -105,7 +104,7 @@ func (cfg config) sendMessageHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&yap)
 	if err := cfg.sendKafkaMessage(yap); err != nil {
 
-        cfg.logger.Log(ERROR ,errors.Wrap(err ,"sending message"))
+        cfg.logger.Log(ERROR ,fmt.Errorf("Sending message %v",err))
 		respondWithJSON(w, http.StatusInternalServerError, err)
 
 		return
